@@ -1,0 +1,9 @@
+app = "taller-docker-jorge"
+primary_region = "gru"  # São Paulo (cercano a Chile)
+
+[build]
+builder = "docker"
+dockerfile = "Dockerfile"  # Aquí va un Dockerfile raíz
+
+[env]
+COMPOSE_FILE = "docker-compose.yml"
