@@ -1,9 +1,23 @@
-app = "taller-docker-jorge"
-primary_region = "gru"  # São Paulo (cercano a Chile)
+# fly.toml app configuration file generated for cuber3 on 2026-04-12T00:02:26Z
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'cuber3'
+primary_region = 'ams'
 
 [build]
-builder = "docker"
-dockerfile = "Dockerfile"  # Aquí va un Dockerfile raíz
 
-[env]
-COMPOSE_FILE = "docker-compose.yml"
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
+
+[[vm]]
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 1
+  memory_mb = 256
