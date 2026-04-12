@@ -1,0 +1,40 @@
+# fly.toml - Frontend (Nginx)
+# Desplegar con: flyctl deploy -c fly-frontend.toml
+
+app = "taller-docker-frontend"
+primary_region = "scl"  # Santiago, Chile
+build.builder = "docker"
+
+[build]
+  dockerfile = "frontend/Dockerfile"
+  context = "."
+
+# Port mapping
+[[services]]
+  protocol = "tcp"
+  internal_port = 80
+
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
+
+[checks]
+  [checks.http_health]
+    grace_period = "5s"
+    interval = "10s"
+    method = "GET"
+    path = "/"
+    protocol = "http"
+    timeout = "5s"
+    type = "http"
+
+[deploy]
+  strategy = "rolling"
+  max_concurrency = 1
+
+[[services.tcp_checks]]
+  interval = "15s"
+  timeout = "5s"
