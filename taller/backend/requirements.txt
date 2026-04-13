@@ -1,6 +1,0 @@
-# Dependencias del backend
-# Se fijan versiones específicas para garantizar reproducibilidad
-
-flask==3.0.3          # Framework web minimalista para la API REST
-psycopg2-binary==2.9.9 # Conector PostgreSQL para Python (binario: no requiere compilar libpq)
-flask-cors==4.0.1     # Permite peticiones Cross-Origin desde el frontend
