@@ -1,0 +1,114 @@
+# =============================================================
+# Taller Sumativo – Despliegue de entorno con Docker
+# Asignatura: Aplicaciones y Tecnologías de la Web
+# Universidad San Sebastián
+#
+# Arquitectura de 3 capas (cliente-servidor en contenedores):
+#   - frontend : HTML estático servido por Nginx  → localhost:8080
+#   - backend  : API REST con Python/Flask         → localhost:3000
+#   - db       : PostgreSQL con volumen persistente
+# =============================================================
+
+version: "3.9"
+
+services:
+
+  # ── 1. FRONTEND ───────────────────────────────────────────
+  # Imagen: nginx:1.25-alpine
+  # Justificación: imagen oficial de Nginx, variante alpine
+  # (~25 MB vs ~140 MB de la imagen estándar). Sólo sirve
+  # archivos estáticos, no necesita más dependencias.
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: taller_frontend
+    ports:
+      # Mapeo: puerto 8080 del host → puerto 80 del contenedor
+      - "8080:80"
+    volumes:
+      # Montaje de los archivos HTML del host al contenedor.
+      # Permite editar el frontend sin reconstruir la imagen.
+      - ./frontend/html:/usr/share/nginx/html:ro
+    depends_on:
+      - backend
+    networks:
+      - taller_network
+    restart: unless-stopped
+
+  # ── 2. BACKEND ────────────────────────────────────────────
+  # Imagen: python:3.11-slim
+  # Justificación: imagen oficial de Python, variante slim
+  # (~45 MB vs ~900 MB de la imagen completa). Incluye sólo
+  # lo necesario para ejecutar Flask.
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: taller_backend
+    ports:
+      # Mapeo: puerto 3000 del host → puerto 5000 del contenedor
+      # (Flask corre en 5000 internamente; se expone como 3000)
+      - "3000:5000"
+    environment:
+      # Variables de entorno para la conexión a la base de datos.
+      # Nunca incluir credenciales directamente en el código.
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=tallerdb
+      - DB_USER=talleruser
+      - DB_PASSWORD=tallerpass
+      - FLASK_ENV=development
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - taller_network
+    restart: unless-stopped
+
+  # ── 3. BASE DE DATOS ──────────────────────────────────────
+  # Imagen: postgres:16-alpine
+  # Justificación: imagen oficial de PostgreSQL, variante alpine
+  # (~80 MB vs ~400 MB de la imagen estándar). Versión 16 LTS,
+  # estable y con soporte hasta 2028. Se evita "latest" para
+  # garantizar reproducibilidad del entorno.
+  db:
+    image: postgres:16-alpine
+    container_name: taller_db
+    environment:
+      POSTGRES_DB: tallerdb
+      POSTGRES_USER: talleruser
+      POSTGRES_PASSWORD: tallerpass
+    ports:
+      # Puerto expuesto sólo para desarrollo/debugging local
+      - "5432:5432"
+    volumes:
+      # Volumen nombrado: persiste los datos de PostgreSQL
+      # aunque el contenedor sea eliminado y recreado.
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      # Docker espera a que PostgreSQL esté listo antes de
+      # levantar el backend (evita errores de conexión al arrancar)
+      test: ["CMD-SHELL", "pg_isready -U talleruser -d tallerdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - taller_network
+    restart: unless-stopped
+
+# ── VOLÚMENES ─────────────────────────────────────────────
+# postgres_data: volumen nombrado gestionado por Docker.
+# Persiste los datos de la BD aunque se ejecute "docker-compose down".
+# Para eliminar los datos también: "docker-compose down -v"
+volumes:
+  postgres_data:
+    driver: local
+
+# ── REDES ─────────────────────────────────────────────────
+# Red interna bridge que permite la comunicación entre
+# contenedores por nombre de servicio (ej: "db", "backend").
+# El exterior sólo accede a través de los puertos publicados.
+networks:
+  taller_network:
+    driver: bridge
